@@ -1,11 +1,8 @@
 package gui;
 
 import java.net.URL;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -45,6 +42,8 @@ public class SellerFormController implements Initializable {
 
 	private SellerService service;
 
+	private DepartmentService departementService;
+
 	private List<DataChangeListener> dataChangeListeners = new ArrayList<>();
 
 	@FXML
@@ -61,6 +60,9 @@ public class SellerFormController implements Initializable {
 
 	@FXML
 	private TextField txtBaseSalary;
+
+	@FXML
+	private ComboBox<Department> comboBoxDepartment;
 
 	@FXML
 	private Label labelErrorName;
@@ -80,12 +82,15 @@ public class SellerFormController implements Initializable {
 	@FXML
 	private Button btCancel;
 
+	private ObservableList<Department> obsList;
+
 	public void setSeller(Seller entity) {
 		this.entity = entity;
 	}
 
-	public void setSellerService(SellerService service) {
+	public void setServices(SellerService service, DepartmentService departmentService) {
 		this.service = service;
+		this.departementService = departmentService;
 	}
 
 	public void subscribeDataChangeListener(DataChangeListener listener) {
@@ -156,6 +161,7 @@ public class SellerFormController implements Initializable {
 		Constraints.setTextFieldDouble(txtBaseSalary);
 		Constraints.setTextFieldMaxLength(txtEmail, 60);
 		Utils.formatDatePicker(dpBirthDate, "dd/MM/yyyy");
+		initializeComboBoxDepartment();
 	}
 
 	public void updateFormData() {
@@ -168,14 +174,30 @@ public class SellerFormController implements Initializable {
 		Locale.setDefault(Locale.US);
 		txtBaseSalary.setText(String.format("%.2f", entity.getBaseSalary()));
 		if (entity.getBirthDate() != null) {
-			Date input = new Date();
-			input=entity.getBirthDate();
+			Date input = new Date();// gambi feita para adequar a data
+			input = entity.getBirthDate();
 			LocalDate date = input.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-			dpBirthDate.setValue(date);
-			
-//			dpBirthDate.setValue(LocalDate.ofInstant(entity.getBirthDate().toInstant(), ZoneId.systemDefault()));
+			dpBirthDate.setValue(date);// até aqui
+			// dpBirthDate.setValue(LocalDate.ofInstant(entity.getBirthDate().toInstant(),
+			// ZoneId.systemDefault())); //quando resolver o problelma do para o
+			// java 9 descomentar essa linha
+		}
+		
+		if (entity.getDepartment()==null){
+			comboBoxDepartment.getSelectionModel().selectFirst();
+		}
+		comboBoxDepartment.setValue(entity.getDepartment());
+
+	}
+
+	public void loadAssociatedObjects() {
+		if (departementService == null) {
+			throw new IllegalStateException("DepartmentService was null");
 		}
 
+		List<Department> list = departementService.findAll();
+		obsList = FXCollections.observableArrayList(list);
+		comboBoxDepartment.setItems(obsList);
 	}
 
 	private void setErrorMessages(Map<String, String> errors) {
@@ -186,4 +208,15 @@ public class SellerFormController implements Initializable {
 		}
 	}
 
+	private void initializeComboBoxDepartment() {
+		Callback<ListView<Department>, ListCell<Department>> factory = lv -> new ListCell<Department>() {
+			@Override
+			protected void updateItem(Department item, boolean empty) {
+				super.updateItem(item, empty);
+				setText(empty ? "" : item.getName());
+			}
+		};
+		comboBoxDepartment.setCellFactory(factory);
+		comboBoxDepartment.setButtonCell(factory.call(null));
+	}
 }
